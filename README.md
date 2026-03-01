@@ -1,5 +1,9 @@
 # (unfinished) uno engine
 
+### todo:
+-[ ] remove non-null assertion operators
+-[ ] switch to private access modifiers
+
 ### Card Colours:
 Red, Green, Blue, Yellow
 

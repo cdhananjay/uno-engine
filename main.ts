@@ -27,15 +27,20 @@ enum CardTypes {
     NUMBER, SKIP, REVERSE, DRAW2, DRAW4
 }
 
-class Game implements IGame{
-    reversed: boolean = false
+export class Game implements IGame{
+    reversed: boolean
     players : IPlayer[]
-    deck : ICard[] = []
-    drawPile: ICard[] = []
-    discardPile: ICard[] = []
-    currTurn = 0
+    deck : ICard[]
+    drawPile: ICard[]
+    discardPile: ICard[]
+    currTurn : number
     constructor(players: IPlayer[]) {
         this.players = players;
+        this.reversed = false;
+        this.deck = [];
+        this.drawPile = [];
+        this.discardPile = [];
+        this.currTurn = 0;
         this.fillDeck();
         this.shuffleCards(this.deck);
         this.distributeCards();
@@ -65,7 +70,7 @@ class Game implements IGame{
         }
     }
     shuffleCards(cards : ICard[]) {
-        for (let i = 0; i < cards.length; i++) {
+        for (let i = 0; i < 100000; i++) {
             const j = Math.floor(Math.random()*cards.length)
             const k = Math.floor(Math.random()*cards.length)
             const temp = cards[j]
@@ -77,56 +82,55 @@ class Game implements IGame{
         const initialCardsPerPlayer = 7
         for (let j = 0; j < initialCardsPerPlayer; j++) {
             for (let i = 0; i < this.players.length; i++) {
-                this.drawCard(this.players[i])
+                this.players[i].cards.push(this.deck.pop()!)
             }
         }
-        for (let i = 0; i < this.deck.length - 1; i++) {
-            this.drawPile.push(this.deck.pop());
+        while (this.deck.length !== 1) {
+            this.drawPile.push(this.deck.pop()!);
         }
-        this.discardPile.push(this.deck.pop());
-    }
-
-    updateCurrTurn() {
-        if (this.reversed) {
-            if (this.currTurn > 0) this.currTurn--;
-            else this.currTurn = this.players.length - 1;
-        }
-        else{
-            if (this.currTurn < this.players.length - 1) this.currTurn++;
-            else this.currTurn = 0;
-        }
+        this.discardPile.push(this.deck.pop()!);
     }
     playTurn(card : ICard) {
-        const topDiscardPileCard = this.discardPile[-1]
+        const topDiscardPileCard = this.discardPile[this.discardPile.length - 1]
         if (topDiscardPileCard.type === CardTypes.DRAW2) for (let i = 0; i < 2; i++) this.drawCard(this.players[this.currTurn])
         else if (topDiscardPileCard.type === CardTypes.DRAW4) for (let i = 0; i < 4; i++) this.drawCard(this.players[this.currTurn])
+
         const playableCards = this.getPlayableCards();
         if (playableCards.length === 0) {
             this.drawCard(this.players[this.currTurn])
-            this.updateCurrTurn()
-            return true
+            this.currTurn = this.getNextPlayerIndex();
+            return
         }
         if (playableCards.indexOf(card) != -1) {
             this.discardCard(this.players[this.currTurn], this.players[this.currTurn].cards.indexOf(card))
             if (card.type === CardTypes.REVERSE) this.reversed = !this.reversed;
-            else if (card.type === CardTypes.SKIP) this.updateCurrTurn();
-            this.updateCurrTurn();
-            return true
+            else if (card.type === CardTypes.SKIP) this.currTurn = this.getNextPlayerIndex();
+            else if (card.type === CardTypes.DRAW2) for (let i = 0; i < 2; i++) this.drawCard(this.players[this.getNextPlayerIndex()])
+            else if (card.type === CardTypes.DRAW4) for (let i = 0; i < 4; i++) this.drawCard(this.players[this.getNextPlayerIndex()])
+            this.currTurn = this.getNextPlayerIndex();
+            return
         }
-        return false
     }
-
+    getNextPlayerIndex() {
+        if (this.reversed) {
+            if (this.currTurn === 0) return this.players.length - 1;
+            else return this.currTurn - 1;
+        }
+        else{
+            if (this.currTurn === this.players.length - 1) return 0;
+            else return this.currTurn + 1;
+        }
+    }
     getPlayableCards() {
         return this.players[this.currTurn].cards.filter(card => this.isValidDiscard(card))
     }
-
     drawCard(player : IPlayer) {
-        if (this.drawPile.length > 0) player.cards.push(this.drawPile.pop())
+        if (this.drawPile.length > 0) player.cards.push(this.drawPile.pop()!)
         // When the draw pile runs out, shuffle the discard pile (except the top card). That becomes the new draw pile.
         const topCardOfDiscardPile = this.discardPile.pop()
         this.shuffleCards(this.discardPile)
-        this.drawPile = this.discardPile
-        this.discardPile = [topCardOfDiscardPile]
+        this.drawPile = [...this.discardPile]
+        this.discardPile.push(topCardOfDiscardPile!)
     }
     discardCard(player: IPlayer, index : number) {
         if (!this.isValidDiscard(player.cards[index])) return false
@@ -135,9 +139,7 @@ class Game implements IGame{
         return true
     }
     isValidDiscard(card: ICard) {
-        // drop on empty deck
-        if (this.discardPile.length == 0) return true
-        const discardPileTopCard = this.discardPile[-1]
+        const discardPileTopCard = this.discardPile[this.discardPile.length-1]
         // drop anything on draw card
         if (discardPileTopCard.type === CardTypes.DRAW2 || discardPileTopCard.type === CardTypes.DRAW4 ) return true
         // drop draw card on anything
@@ -160,16 +162,14 @@ class Game implements IGame{
     }
 }
 
-class Player implements IPlayer {
+export class Player implements IPlayer {
     cards: ICard[]
     id : number
     isBot : boolean = false
     constructor(id: number, isBot ?: boolean) {
+        this.cards = [];
         this.id = id;
         if (isBot != undefined) this.isBot = isBot;
-    }
-    hasWon() {
-        return this.cards.length === 0;
     }
 }
 
@@ -181,5 +181,17 @@ class Card implements ICard {
         this.type = type
         if (this.type === CardTypes.NUMBER || this.type === CardTypes.REVERSE || this.type === CardTypes.SKIP) this.colour = colour
         if (this.type === CardTypes.NUMBER) this.value = value
+    }
+    toString(){
+        switch (this.type) {
+            case CardTypes.DRAW4:
+                return "DRAW4"
+            case CardTypes.DRAW2:
+                return "DRAW2"
+            case CardTypes.NUMBER:
+                return `${this.value} ${Colours[this.colour!]}`
+            default:
+                return `${CardTypes[this.type]} ${Colours[this.colour!]}`
+        }
     }
 }
