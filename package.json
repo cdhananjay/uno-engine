@@ -1,6 +1,11 @@
 {
+<<<<<<< Updated upstream
     "name": "uno.js",
     "version": "0.0.2",
+=======
+    "name": "uno-engine-js",
+    "version": "0.0.0",
+>>>>>>> Stashed changes
     "description": "A headless, zero-dependency uno game logic engine written in TypeScript.",
     "keywords": [
         "uno",
@@ -16,13 +21,13 @@
         "game",
         "engine"
     ],
-    "homepage": "https://github.com/cdhananjay/uno-engine#readme",
+    "homepage": "https://github.com/cdhananjay/uno-engine-js#readme",
     "bugs": {
-        "url": "https://github.com/cdhananjay/uno-engine/issues"
+        "url": "https://github.com/cdhananjay/uno-engine-js/issues"
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/cdhananjay/uno-engine.git"
+        "url": "git+https://github.com/cdhananjay/uno-engine-js.git"
     },
     "license": "ISC",
     "author": "Dhananjay Chavan",

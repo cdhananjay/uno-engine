@@ -1,11 +1,11 @@
-enum Colours {
+export enum Colours {
     RED = 1,
     YELLOW,
     GREEN,
     BLUE,
 }
 
-enum CardTypes {
+export enum CardTypes {
     NUMBER = 1,
     SKIP,
     REVERSE,
@@ -23,8 +23,9 @@ export default class Game {
     private _currPlayerIndex: number = 0;
 
     /**
+     * Create a new game with given players.
      * @param players
-     * @throws error if size of players array is less than 2 or more than 10
+     * @throws error if array size is less than 2 or more than 10
      */
     constructor(players: (string | { name: string; isBot: boolean })[]) {
         if (players.length < 2 || players.length > 10)
@@ -40,37 +41,44 @@ export default class Game {
     }
 
     /**
+     * @return an array consisting of all the players in the game
+     */
+    public get players() {
+        return this._players;
+    }
+
+    /**
      * @return an array consisting of cards in draw pile
      */
     public get drawPile() {
-        return [...this._drawPile];
+        return this._drawPile;
     }
 
     /**
      * @return an array consisting of cards in discard pile
      */
     public get discardPile() {
-        return [...this._discardPile];
+        return this._discardPile;
     }
 
     /**
-     * @return current player's index in the player array
+     * @return current player’s index in players array
      */
     public get currPlayerIndex() {
         return this._currPlayerIndex;
     }
 
     /**
-     * @return player object of the current player
+     * @return current player object, equivalent of `this.players[this.currPlayer]`
      */
     public get currPlayer() {
         const player = this._players[this._currPlayerIndex];
         if (!player) throw new Error("Invalid current player index");
-        return { ...player } as Player;
+        return player;
     }
 
     /**
-     * @return index of player who should be playing next
+     * @return  index of player in the player’s array whose turn is next
      */
     public get nextPlayerIndex() {
         if (this._isReversed) {
@@ -83,58 +91,58 @@ export default class Game {
     }
 
     /**
-     * @return an array consisting of all the players in the game
-     */
-    public get players() {
-        return [...this._players];
-    }
-
-    /**
-     * @return true if turns are played in a reverse way, else false
+     * @return false if current player index moves from start to end of the player’s array, true otherwise
      */
     public get isReversed() {
         return this._isReversed;
     }
 
     /**
-     * @return array of cards which can be played by the current player.
-     * PLAYABLE CARDS:
-     * if discard pile top card is NOT Draw4 or Wild:
-     * - Player can discard a card which matches the top discard pile card by
-     * Colour, Number, Type (applicable only to Skip, Reverse, Draw2); or play Draw4 / Wild card.
+     * @return Returns: current player’s playable cards
      *
-     * if discard pile top card is Draw4 or Wild:
-     * - Player can discard a card whose colour matches wild colour; or play Draw4 / Wild card.
+     * Playable Cards:
+     * A card is playable if it follows any of the given conditions:
      *
-     * If player cannot play by one of the above method
-     * - player draws 1 card from draw pile.
+     *     1. is Draw4 / Wild card
+     *     2. discard pile top card is NOT Draw4 or Wild && card matches the discard pile top card
+     *          by Colour, Number, Type (applicable only to Skip, Reverse, Draw2)
+     *     3. discard pile top card is Draw4 or Wild && card matches the wild colour
+     *
+     * Wild colour: when player play’s a wild / draw4 card, player can choose a colour to set as wild colour
      */
     public get playableCards() {
         return this.currPlayer.hand.filter((card) => this.isPlayable(card));
     }
 
-    // TODO: REMOVE DUPLICATE CODE, make docs smoler
     /**
-     * if no playable cards:
-     * - current player draws a card
-     * else if only 1 playable card available which is not of type wild or draw4:
-     * - that card is played regardless of params given
-     * else if only 1 playable card available of type wild or draw4:
-     * - that card is played with given wildColour param
-     * else if current player is a bot:
-     * - choose random card and random colour (if required) and play it
-     * else if given card is one of playable card:
-     * - play it
-     * else throw error
-     * @param card ignored if current player is bot OR if there are only 1 / 0 playable cards
-     * @param wildColour ignored if current player is bot OR if card type is not draw4 / wild
-     * @throws error if required params are not provided or card is not playable
+     * playTurn
+     *
+     *     -if no playable cards : current player draws a card
+     *     -else if current player is a bot: choose random card and random colour (if required) and play it
+     *     -else if only 1 playable card available which is NOT of type wild or draw4 :
+     *          that card is played regardless of params given, return
+     *     -else the given card and wildColour (if needed) are played
+     * @param card card to play out of the `game.playableCards`, ignored if current player is a bot or no or 1 playable card
+     * @param wildColour colour to set as the wildColour, ignored if card is not of type Wild or Draw4 or player is a bot
+     * @throws error error if required parameters are not provided by players with `isBot = false`
      */
     public playTurn(card?: Card, wildColour?: Colours) {
-        const playableCards = this.playableCards;
+        const playableCards = this.playableCards; // <=== this is just to reduce total calls
+
+        /* =========== IMPORTANT ===========
+            while doing performAction(card) then discardCard(this.currPlayer, card) :
+            it might happen that card was skip and performAction changes
+            currPlayerIndex to nextPlayerIndex, i.e. this.currPlayer changes
+            so discardCard would discard from some other player
+            hence we keep reference to the player whose turn is going on before doing anything
+
+            other way around this would be just doing discardCard before performAction,
+            but then I won't be able to write this! jk, this feels more safe
+         */
+        const player = this.currPlayer; // <=== keeping reference of the curr player
 
         if (playableCards.length === 0) {
-            this.drawCard(this.currPlayer);
+            this.drawCard(player);
             this._currPlayerIndex = this.nextPlayerIndex;
             return;
         }
@@ -149,7 +157,7 @@ export default class Game {
                 wildColour = Math.floor(Math.random() * 4 + 1);
                 this.performAction(cardToDiscard, wildColour);
             } else this.performAction(cardToDiscard);
-            this.discardCard(cardToDiscard);
+            this.discardCard(player, cardToDiscard);
             this._currPlayerIndex = this.nextPlayerIndex;
             return;
         }
@@ -163,7 +171,7 @@ export default class Game {
                 if (wildColour !== undefined)
                     this.performAction(cardToDiscard, wildColour);
             } else throw new Error("colour not provided for wild card");
-            this.discardCard(cardToDiscard);
+            this.discardCard(player, cardToDiscard);
             this._currPlayerIndex = this.nextPlayerIndex;
             return;
         } else {
@@ -178,7 +186,7 @@ export default class Game {
                 if (wildColour !== undefined)
                     this.performAction(cardToDiscard, wildColour);
             } else throw new Error("colour not provided for wild card");
-            this.discardCard(cardToDiscard);
+            this.discardCard(player, cardToDiscard);
             this._currPlayerIndex = this.nextPlayerIndex;
             return;
         }
@@ -186,15 +194,8 @@ export default class Game {
 
     //==========================private methods below this==================================
 
-    /**
-     * fills given pile with the following 108 cards:
-     * - Numbers : two copies of each 1 to 9 per colour, one 0 per colour = 19 × 4 colours = 76 Number cards
-     * - Skip : two per colour = 2 × 4 colours = 8 Skip cards
-     * - Reverse: two per colour = 2 × 4 colours = 8 Reverse cards
-     * - Draw2 : two per colour = 2 × 4 colours = 8 Draw2 cards
-     * - Draw4 : 4 initially uncoloured (gets coloured when discarded) = 4 Draw4 cards
-     * - Wild : 4 initially uncoloured (gets coloured when discarded) = 4 Wild cards
-     * @param pile an array to push the 108 cards into
+    /** fills the given pile with the 108 uno cards
+     * @param pile array which would be filled with cards
      * @private
      */
     private fill(pile: Card[]) {
@@ -232,8 +233,8 @@ export default class Game {
     }
 
     /**
-     * shuffle a pile with the Fisher–Yates Shuffle (Knuth Shuffle) algorithm
-     * @param pile array of cards to shuffle
+     * shuffles the provided array with Fisher–Yates Shuffle (Knuth Shuffle) algorithm
+     * @param pile array of cards which will be shuffled
      * @private
      */
     private shuffle(pile: Card[]) {
@@ -246,8 +247,7 @@ export default class Game {
     }
 
     /**
-     * distribute 7 cards to each player from the draw pile,
-     * put 1 card to discard pile from the draw pile
+     * moves 7 cards from the draw pile to each player's hand, then moves 1 card from draw pile to discard pile
      * @private
      */
     private distribute() {
@@ -259,9 +259,15 @@ export default class Game {
     }
 
     /**
-     * move the top card from the draw pile to the player's hand
-     * @param player player object, whose hand the card is moved to
+     * moves the last card in drawPile array to player's hand
+     *
+     *      -Note: top card of draw pile is actually the end of the draw pile array,
+     *          i.e. the last element in draw pile. See it as a stack.
+     *      -Note: When the draw pile runs out, all cards from discard pile except the top card are added to draw pile.
+     *          So there is always a card available to draw provided the discard pile is not empty.
+     * @param player player whose hand, the drawPile array's last card would be moved
      * @private
+     * @throws error error if both discard pile and draw pile and empty.
      */
     private drawCard(player: Player) {
         const drawPileTopCard = this._drawPile.pop();
@@ -282,27 +288,39 @@ export default class Game {
     }
 
     /**
-     * moves the card from the current player's hand onto the top of discard pile
-     * @param card card to move from the player's hand
+     * moves the card from the current player's hand onto the top of discard pile.
+     *
+     *          Note: top card of discard pile is actually the end of the discard pile array,
+     *          i.e. the last element in discard pile. See it as a stack.
+     * @param player player from whose hand the provided card would be moved to discard pile
+     * @param card the card to move from current player's hand and added to discard pile
      * @private
+     * @throws error error if provided card was not found with current player
      */
-    private discardCard(card: Card) {
+    private discardCard(player: Player, card: Card) {
+        const index = player.hand.indexOf(card);
+        if (index === -1)
+            throw new Error(
+                `provided card ${card.toString()} was not found with current player \n${player.toString()}`,
+            );
         this._discardPile.push(card);
-        this.currPlayer.hand.splice(this.currPlayer.hand.indexOf(card), 1);
+        player.hand.splice(index, 1);
     }
 
     /**
-     * a card is playable if it follows any of the given conditions:
+     *
+     *  *Playable Cards*:
+     * A card is playable if it follows any of the given conditions:
      * 1. is Draw4 / Wild card
-     * 2. if discard pile top card is NOT Draw4 or Wild:
-     * - card matches the top discard pile card by
-     * Colour, Number, Type (applicable only to Skip, Reverse, Draw2)
-     * 3. if discard pile top card is Draw4 or Wild:
-     * - card matches the wild colour
+     * 2. discard pile top card is NOT Draw4 or Wild && card matches the discard pile top card by
+     *      Colour, Number, Type (applicable only to Skip, Reverse, Draw2)
+     * 3. discard pile top card is Draw4 or Wild && card matches the *wild colour*
+     *
+     * *Wild colour:* when player play's a wild / draw4 card, player can choose a colour to set as wild colour
      *
      * @param card a card to check if it is playable
      * @private
-     * @return true if card is playable, false if it is not
+     * @return true if provided card is playable, else false
      */
     private isPlayable(card: Card) {
         const discardPileTopCard =
@@ -343,8 +361,8 @@ export default class Game {
      * - Draw2: Next player draws 2 cards.
      * - Draw4: Acts as Wild card, then next player draws 4 cards.
      * - Wild: Current player makes a colour choice, the chosen colour is now the wild colour.
-     * @param card a card based upon which the action is made
-     * @param wildColour ignored if card is not of type draw4 or wild
+     * @param card the card based upon whose type the action is performed
+     * @param wildColour ignored if card type is not draw4 or wild, `this.wildColour` is set to provided wildColour
      * @private
      */
     private performAction(card: Card, wildColour?: Colours) {
@@ -371,6 +389,7 @@ export default class Game {
                 );
         }
     }
+
     toString() {
         let str = `==== discardPile (top to down) ====\n`;
         for (let i = this._discardPile.length - 1; i >= 0; i--)
@@ -393,6 +412,7 @@ class Player {
         this.name = name;
         this.isBot = isBot;
     }
+
     toString() {
         let str = `=== ${this.isBot ? "bot" : ""} ${this.name} ===\n`;
         for (const card of this.hand) str += `${card.toString()}\n`;
@@ -432,19 +452,18 @@ class Card {
     }
 
     toString() {
-        switch (this.type) {
-            case CardTypes.NUMBER:
-                return `${this.value} ${Colours[this.colour!]}`;
-            case CardTypes.SKIP:
-                return `SKIP ${Colours[this.colour!]}`;
-            case CardTypes.REVERSE:
-                return `REVERSE ${Colours[this.colour!]}`;
-            case CardTypes.DRAW2:
-                return `DRAW2 ${Colours[this.colour!]}`;
-            case CardTypes.DRAW4:
-                return `DRAW4`;
-            case CardTypes.WILD:
-                return `WILD`;
-        }
+        let str = "";
+        str += this.type === CardTypes.NUMBER ? this.value : "";
+        str += " ";
+        str +=
+            this.type === CardTypes.WILD || this.type === CardTypes.DRAW4
+                ? ""
+                : Colours[this.colour!];
+        str += " ";
+        str += this.type !== CardTypes.NUMBER ? CardTypes[this.type] : "";
+        return str;
     }
 }
+
+export interface IPlayer extends Player {}
+export interface ICard extends Card {}
