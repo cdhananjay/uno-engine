@@ -149,9 +149,9 @@ export default class Game {
      *     -else the given card and wildColour (if needed) are played
      *
      * **Imp Note: card actions are performed internally, current player index gets updated internally, players with empty hand are skipped**
-     * @param card card to play out of the `game.playableCards`, ignored if current player is a bot or no or 1 playable card
-     * @param wildColour colour to set as the wildColour, ignored if card is not of type Wild or Draw4 or player is a bot
-     * @throws error error if required parameters are not provided by players with `isBot = false`
+     * Params:
+     * @param card card to play out of the `game.playableCards`, ignored if current player is a bot OR 0 / 1 playable cards
+     * @param wildColour colour to set as the wildColour, ignored if card is not of type Wild / Draw4 OR player is a bot
      * @throws error if `game.isOver` is true
      */
     public playTurn(card?: Card, wildColour?: Colours) {

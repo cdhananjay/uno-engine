@@ -65,16 +65,7 @@ function maintainsTotalCardStrength() {
         let totalCards = g.drawPile.length + g.discardPile.length;
         for (const p of g.players) totalCards += p.hand.length;
 
-        let gameWon = false;
-        while (!gameWon) {
-            for (const p of g.players) {
-                if (p.hand.length === 0) {
-                    gameWon = true;
-                    break;
-                }
-            }
-            if (gameWon) break;
-
+        while (!g.isOver) {
             let currTotalCards = g.drawPile.length + g.discardPile.length;
             for (const p of g.players) currTotalCards += p.hand.length;
             if (currTotalCards !== totalCards) return false;
@@ -86,13 +77,6 @@ function maintainsTotalCardStrength() {
             currTotalCards = g.drawPile.length + g.discardPile.length;
             for (const p of g.players) currTotalCards += p.hand.length;
             if (currTotalCards !== totalCards) return false;
-
-            for (const p of g.players) {
-                if (p.hand.length === 0) {
-                    gameWon = true;
-                    break;
-                }
-            }
         }
     }
     return true;
@@ -127,16 +111,7 @@ function maintainsTypes(type: CardTypes, strength: number) {
             for (const card of p.hand) if (card.type === type) cards++;
         if (cards !== strength) return false;
 
-        let gameWon = false;
-        while (!gameWon) {
-            for (const p of g.players) {
-                if (p.hand.length === 0) {
-                    gameWon = true;
-                    break;
-                }
-            }
-            if (gameWon) break;
-
+        while (!g.isOver) {
             let cards = 0;
             for (const card of g.drawPile) if (card.type === type) cards++;
             for (const card of g.discardPile) if (card.type === type) cards++;
@@ -154,13 +129,6 @@ function maintainsTypes(type: CardTypes, strength: number) {
             for (const p of g.players)
                 for (const card of p.hand) if (card.type === type) cards++;
             if (cards !== strength) return false;
-
-            for (const p of g.players) {
-                if (p.hand.length === 0) {
-                    gameWon = true;
-                    break;
-                }
-            }
         }
     }
     return true;
@@ -184,16 +152,7 @@ function maintainsColour(colour: Colours) {
                     cards++;
         if (cards !== 25) return false;
 
-        let gameWon = false;
-        while (!gameWon) {
-            for (const p of g.players) {
-                if (p.hand.length === 0) {
-                    gameWon = true;
-                    break;
-                }
-            }
-            if (gameWon) break;
-
+        while (!g.isOver) {
             let cards = 0;
             for (const card of g.drawPile)
                 if (card.colour !== undefined && card.colour === colour)
@@ -223,13 +182,6 @@ function maintainsColour(colour: Colours) {
                     if (card.colour !== undefined && card.colour === colour)
                         cards++;
             if (cards !== 25) return false;
-
-            for (const p of g.players) {
-                if (p.hand.length === 0) {
-                    gameWon = true;
-                    break;
-                }
-            }
         }
     }
     return true;
@@ -253,16 +205,7 @@ function maintainsNumbers() {
         if (arr[0] !== 4) return false;
         for (let i = 1; i <= 9; i++) if (arr[i] !== 8) return false;
 
-        let gameWon = false;
-        while (!gameWon) {
-            for (const p of g.players) {
-                if (p.hand.length === 0) {
-                    gameWon = true;
-                    break;
-                }
-            }
-            if (gameWon) break;
-
+        while (!g.isOver) {
             let arr = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
             for (const card of g.drawPile)
                 if (card.type === CardTypes.NUMBER) arr[card.value!]++;
@@ -288,13 +231,6 @@ function maintainsNumbers() {
                     if (card.type === CardTypes.NUMBER) arr[card.value!]++;
             if (arr[0] !== 4) return false;
             for (let i = 1; i <= 9; i++) if (arr[i] !== 8) return false;
-
-            for (const p of g.players) {
-                if (p.hand.length === 0) {
-                    gameWon = true;
-                    break;
-                }
-            }
         }
     }
     return true;
